@@ -1,5 +1,6 @@
 import streamlit as st
 import ClassesContasST
+from ListaDeExercicios import lista_de_exercicios,lista_de_contas
 
 #----- Inicializando Variaveis que vão ficar com valores salvos na sessão
 if 'lista_contas_deb' not in st.session_state:
@@ -8,16 +9,29 @@ if 'lista_contas_deb' not in st.session_state:
     st.session_state.conta_selecionada = 0
     st.session_state.id_conta = 0
     st.session_state.conta_selecionada_tipo = ""
+    st.session_state.id_questao = 0
 
 #Configuração da página
 st.set_page_config(page_title="UFF | Contabilidade", layout="wide",page_icon="logouff_vertical_azul-1.png")
 st.logo("logouff_vertical_azul-1.png")
+st.markdown("""
+<style>
+.texto-scroll {
+    height: 180px;          /* altura fixa */
+    overflow-y: auto;       /* scroll vertical */
+    padding: 0px;
+    border-radius: 8px;
+    white-space: pre-wrap;  /* respeita as quebras de linha */
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 #------------------------Modal de Criar Conta
 @st.dialog("Criar Conta")
 def CasdastrarConta():
     st.text("Criar conta")
-    nome_conta = st.text_input("Nome do Conta", value="Conta")
+    nome_conta = st.selectbox("Nome: ", (lista_de_contas))
     tipo_conta = st.selectbox("Tipo de Conta: ",("Débito","Crédito"))
     valor_conta = st.number_input(
         "Valor",
@@ -25,7 +39,7 @@ def CasdastrarConta():
         value=0.0,
         step=100.0
     )
-    if st.button("Adicionar Conta",key="btn_AddConta"):
+    if st.button("Adicionar Conta",key="btn_AddConta", type="primary"):
         st.session_state.id_conta += 1
         conta_teste = ClassesContasST.Conta_ST(nome_conta, tipo_conta, valor_conta,st.session_state.id_conta)
         print('teste')
@@ -45,7 +59,7 @@ def FazerLancamentos():
                 value=0.0,
                 step=100.0)
 
-    if st.button("Adicionar Lançamento", key="btn_Lancar"):
+    if st.button("Adicionar Lançamento", key="btn_Lancar", type="primary"):
         id_conta = st.session_state.conta_selecionada
         tipo_conta = st.session_state.conta_selecionada_tipo
         if tipo_conta == "Débito":
@@ -54,10 +68,32 @@ def FazerLancamentos():
             conta_selecionada = next((c for c in st.session_state.lista_contas_cred if c.id_conta == id_conta), None)
         conta_selecionada.LancamentoConta(valor_lacamento, tipo_lancamento)
         st.rerun()
+#--------------Lançamentos para mais de 1 conta
+@st.dialog("Fazer lançamentos +")
+def FazerLancamentosMais():
+    st.text("Fazer Lançamentos:")
+    tipo_conta_deb = st.selectbox("Conta (Débito): ", (lista_de_contas))
+    tipo_conta_cred = st.selectbox("Conta (Crédito): ", (lista_de_contas))
+    tipo_lancamento_deb = st.number_input(
+        "Débito (Valor):",
+        min_value=0.0,
+        value=0.0,
+        step=100.0
+    )
+    tipo_lancamento_cred = st.number_input(
+        "Crédito (Valor):",
+        min_value=0.0,
+        value=0.0,
+        step=100.0
+    )
+    if st.button("Fazer Lançamento", type="primary"):
+        st.rerun()
 
 #-------------- Modal do balancete
 @st.dialog("Balancete de Verificação")
 def GerarBalanceteVerificao():
+    todos_lancamentos_cred = 0
+    todos_lancamentos_deb = 0
     balancete_df = []
     listas_todas_contas = st.session_state.lista_contas_deb + st.session_state.lista_contas_cred
     for conta in listas_todas_contas:
@@ -68,18 +104,41 @@ def GerarBalanceteVerificao():
                 "Débito": valor_conta,
                 "Crédito": 0
             }
+            todos_lancamentos_deb = valor_conta + todos_lancamentos_deb
         else:
+            valor_conta = valor_conta *-1
             linha_balancete = {
                 "Nome da Conta": conta.nome_conta,
                 "Débito": 0,
                 "Crédito": valor_conta
             }
+            todos_lancamentos_cred = valor_conta + todos_lancamentos_cred
         balancete_df.append(linha_balancete)
+    balancete_df.append({
+                "Nome da Conta": "Total",
+                "Débito": todos_lancamentos_deb,
+                "Crédito": todos_lancamentos_cred
+            })
     st.dataframe(balancete_df)
+    if todos_lancamentos_deb != todos_lancamentos_cred:
+        st.error("Balancete não bate!")
+    else:
+        st.success("Balancete bate!")
+
+#-------------Trocar De Questão
+def TrocarQuestaoDir():
+    st.session_state.id_questao += 1
+    st.session_state.lista_contas_cred = []
+    st.session_state.lista_contas_deb = []
+def TrocarQuestaoEsq():
+    st.session_state.id_questao -= 1
+    st.session_state.lista_contas_cred = []
+    st.session_state.lista_contas_deb = []
+
 @st.dialog("Excluir Conta")
 def ExcluirConta():
     st.text("Deseja excluir essa Conta?")
-    if st.button("Excluir Conta", use_container_width=True):
+    if st.button("Excluir Conta", use_container_width=True, type="primary"):
         id_conta = st.session_state.conta_selecionada
         tipo_conta = st.session_state.conta_selecionada_tipo
         if tipo_conta == "Débito":
@@ -94,18 +153,25 @@ def ExcluirConta():
 
 #--------------Inicio do codigo 2 colunas para questãoes e botões
 with st.container(border=True):
-    col_questao, col_botoes = st.columns([8,2])
+    col_questao, col_botoes = st.columns([8,2],gap="small")
 
     with col_questao:
-        st.text("No dia primeiro de setembro do ano corrente, a empresa Locadora Sul S.A. celebra um contrato de arrendamento mercantil de um caminhão por 36 meses. O caminhão será utilizado no transporte de equipamentos da entidade. A vida útil do caminhão é de 10 anos, e seu valor justo é de R$ 200.000,00. A taxa de juros implícita no contrato é de 1,5% ao mês. O contrato implica em prestações iguais de R$ 6.500,00. Elabore os lançamentos contábeis no reconhecimento inicial e no primeiro mês, considerando a apropriação da despesa financeira e que os pagamentos são realizados ao final de cada mês.")
-
+        st.markdown(
+            f""" <div class="texto-scroll">{lista_de_exercicios[st.session_state.id_questao]["questao"]}</div>""",
+            unsafe_allow_html=True
+        )
     with col_botoes:
-        st.button("Criar Conta", use_container_width=True, on_click=CasdastrarConta,key="btn_CriarConta")
-        st.button("Vizualizar Balancete", use_container_width=True, on_click=GerarBalanceteVerificao,key="btn_GerarBalanceteVerificao")
-
+        st.button("Criar Conta", use_container_width=True, on_click=CasdastrarConta,key="btn_CriarConta", type="primary")
+        st.button("Fazer Lançamento", use_container_width=True, on_click=FazerLancamentosMais, key="btn_FazerLancamento", type="primary")
+        st.button("Vizualizar Balancete", use_container_width=True, on_click=GerarBalanceteVerificao,key="btn_GerarBalanceteVerificao", type="primary")
+        col_1, col_2 = st.columns(2)
+        with col_1:
+            st.button("◀", use_container_width=True, on_click=TrocarQuestaoEsq, key="btn_trocar_esq", type="primary")
+        with col_2:
+            st.button("▶", use_container_width=True, on_click=TrocarQuestaoDir, key="btn_trocar_dir", type="primary")
 #------------Container do razonetes
 with st.container():
-    col_d, col_c = st.columns(2)
+    col_d, col_c = st.columns(2,gap="small")
     with col_d:
         for conta in st.session_state.lista_contas_deb:
             conta.render()
