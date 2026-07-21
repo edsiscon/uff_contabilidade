@@ -1,6 +1,7 @@
 import streamlit as st
 import ClassesContasST
 from ListaDeExercicios import lista_de_exercicios,lista_de_contas
+from ListaDeDefContas import lista_de_contas_def
 
 #----- Inicializando Variaveis que vão ficar com valores salvos na sessão
 if 'lista_contas_deb' not in st.session_state:
@@ -10,6 +11,8 @@ if 'lista_contas_deb' not in st.session_state:
     st.session_state.id_conta = 0
     st.session_state.conta_selecionada_tipo = ""
     st.session_state.id_questao = 0
+    st.session_state.mostrar_modal_aviso = True
+    st.session_state.conta_nome = ""
 
 #Configuração da página
 st.set_page_config(page_title="UFF | Contabilidade", layout="wide",page_icon="logouff_vertical_azul-1.png")
@@ -26,6 +29,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+#----------------------Modal de apresentação
+@st.dialog("AVISO")
+def AvisoInicial():
+    st.text("Olá, seja bem-vindo! Só uns avisos:"
+            "\n- O site ainda em está em versão de testes, então algumas funcionalidades talvez não funcionem como deveriam."
+            "\n- O foco do conteúdo são os alunos que estão començando na contabilidade."
+            "\n- Sugestões de melhoria podem ser enviadas para: xxxxx"
+            "\nObrigado!!!")
 
 #------------------------Modal de Criar Conta
 @st.dialog("Criar Conta")
@@ -150,8 +162,33 @@ def ExcluirConta():
         st.rerun()
     if st.button("Cancelar", use_container_width=True):
         st.rerun()
+#-------------- Ai vai o caralho das explicações
+@st.dialog("Explicação")
+def CardDeExplicaçao():
+    conta_selecionada = next((conta for conta in lista_de_contas_def if conta["conta"] == st.session_state.conta_nome ), None)
+    st.markdown(f'''
+        <div style="
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-left: 4px solid #28a745;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    color: #155724;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    ">
+    <strong>Conta:</strong> {conta_selecionada["conta"]}<br>
+    <strong>Grupo:</strong> {conta_selecionada["grupo"]}<br>
+    <strong>Natureza:</strong> {conta_selecionada["natureza"]}<br>
+    <strong>Tipo:</strong> {conta_selecionada["tipo"]}<br>
+    <strong>Aumenta:</strong>{conta_selecionada["aumenta"]}<br>
+   <strong> Descrição:</strong> {conta_selecionada["descricao"]}
+</div>''', unsafe_allow_html=True)
+
 
 #--------------Inicio do codigo 2 colunas para questãoes e botões
+if st.session_state.mostrar_modal_aviso:
+    pass
 with st.container(border=True):
     col_questao, col_botoes = st.columns([8,2],gap="small")
 

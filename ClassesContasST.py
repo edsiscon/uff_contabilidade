@@ -1,6 +1,5 @@
 import streamlit as st
-import pandas as pd
-from appST import FazerLancamentos,ExcluirConta
+from appST import FazerLancamentos,ExcluirConta,CardDeExplicaçao
 
 class Conta_ST:
     #Construtor da classe Contas
@@ -20,7 +19,7 @@ class Conta_ST:
     #Rederizar o razonete
     def render(self):
         with st.container(border=True):
-            col_texto, col_botao = st.columns([8, 2])
+            col_texto, col_botao = st.columns([7, 3])
 
             with col_texto:
                 st.markdown(
@@ -29,17 +28,21 @@ class Conta_ST:
                 )
 
             with col_botao:
-                col_btn1, col_btn2 = st.columns(2)
+                col_btn1, col_btn2,col_btn3 = st.columns(3)
                 with col_btn1:
-                    if st.button("📝",key=f"chave_editar{self.id_conta}"):
+                    if st.button("📝",key=f"chave_editar{self.id_conta}",use_container_width=True):
                         st.session_state.conta_selecionada = self.id_conta
                         st.session_state.conta_selecionada_tipo = self.tipo_conta
                         FazerLancamentos()
                 with col_btn2:
-                    if st.button("❌", key=f"chave_excluir{self.id_conta}"):
+                    if st.button("❌", key=f"chave_excluir{self.id_conta}",use_container_width=True):
                         st.session_state.conta_selecionada_tipo = self.tipo_conta
                         st.session_state.conta_selecionada = self.id_conta
                         ExcluirConta()
+                with col_btn3:
+                    if st.button("🔍", key=f"chave_informacao{self.id_conta}",use_container_width=True):
+                        st.session_state.conta_nome = self.nome_conta
+                        CardDeExplicaçao()
             st.dataframe({"Débito": self.lista_lancamentos_deb,"Crédito": self.lista_lancamentos_cred})
 
     #Adicionar os lançamentos no razonete
